@@ -50,6 +50,7 @@ const SocketHandler = (req: any, res: any) => {
 
     // Triggered when the person who joined the room is ready to communicate.
     socket.on("ready", (roomName) => {
+      console.log("roomName", roomName);
       socket.broadcast.to(roomName).emit("ready"); // Informs the other peer in the room.
     });
 
@@ -69,6 +70,12 @@ const SocketHandler = (req: any, res: any) => {
     // Triggered when server gets an answer from a peer in the room.
     socket.on("answer", (answer, roomName) => {
       socket.broadcast.to(roomName).emit("answer", answer); // Sends Answer to the other peer in the room.
+    });
+
+    socket.on("detected_gesture", (data, roomName) => {
+      console.log("here", roomName);
+      console.log(data);
+      socket.broadcast.to(roomName).emit("detected_gesture", data);
     });
 
     socket.on("leave", (roomName) => {

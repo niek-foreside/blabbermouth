@@ -1,4 +1,5 @@
 import { GlobalContext } from "@/context/global";
+import { startRecognition } from "@/recognition/tensor";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import MicIcon from "@mui/icons-material/Mic";
 import MicOffIcon from "@mui/icons-material/MicOff";
@@ -44,6 +45,8 @@ const ICE_SERVERS = {
     },
   ],
 };
+
+let latestDetectedSound = "";
 
 const Room = () => {
   useSocket();
@@ -134,6 +137,9 @@ const Room = () => {
             userVideoRef.current.play();
           };
           socketRef.current.emit("ready", roomName);
+          startRecognition(userVideoRef, function(data: any){
+            socketRef.current.emit("detected_gesture", data, roomName);
+          });
         })
         .catch((err) => {
           /* handle the error */
@@ -151,12 +157,16 @@ const Room = () => {
         video: { width: 500, height: 500 },
       })
       .then((stream) => {
+        console.log("hier!", stream);
         /* use the stream */
         userStreamRef.current = stream;
         userVideoRef.current.srcObject = stream;
         userVideoRef.current.onloadedmetadata = () => {
           userVideoRef.current.play();
         };
+        startRecognition(userVideoRef, function(data: any){
+          socketRef.current.emit("detected_gesture", data, roomName);
+        });
       })
       .catch((err) => {
         /* handle the error */
@@ -224,6 +234,35 @@ const Room = () => {
 
   const handleTrackEvent = (event: RTCTrackEvent) => {
     peerVideoRef.current.srcObject = event.streams[0];
+  };
+
+  const handleGesture = (event: RTCTrackEvent) => {
+    console.log('detected gesture', event);
+    
+    if(latestDetectedSound !== event.detected_hand_gesture){
+      if(event.detected_hand_gesture == "thumps_up"){
+        const thumps_up = new Audio('../resources/thumps_up.mp3');
+        thumps_up.play();
+      }
+  
+      if(event.detected_hand_gesture == "hand_raised"){
+        const hand_raised = new Audio('../resources/hand_raised.mp3');
+        hand_raised.play();
+      }
+
+      if(event.detected_hand_gesture == "german"){
+        const german = new Audio('../resources/german.mp3');
+        german.play();
+      }
+
+      if(event.detected_hand_gesture == "thump_down"){
+        const thump_down = new Audio('../resources/thump_down.mp3');
+        thump_down.play();
+      }
+    }    
+
+    latestDetectedSound = event.detected_hand_gesture;
+
   };
 
   const toggleMediaStream = (type: string, state: boolean) => {
@@ -306,6 +345,7 @@ const Room = () => {
     socketRef.current.on("offer", handleReceivedOffer);
     socketRef.current.on("answer", handleAnswer);
     socketRef.current.on("ice-candidate", handlerNewIceCandidateMsg);
+    socketRef.current.on("detected_gesture", handleGesture)
 
     // clear up after
     return () => socketRef.current.disconnect();
